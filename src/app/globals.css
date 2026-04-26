@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* ── CapyFi Brand Design System ── */
+
+    /* Backgrounds — pure black palette */
+    --color-bg-primary:   #0f0f0f;
+    --color-bg-secondary: #141414;
+    --color-bg-card:      #1a1a1a;
+    --color-bg-card-hover:#202020;
+
+    /* Borders */
+    --color-border:       #2e2e2e;
+    --color-border-2:     #3a3a3a;
+
+    /* Brand accent — CapyFi orange */
+    --color-orange:       #e8521a;
+    --color-orange-hover: #f06030;
+    --color-orange-dim:   rgba(232, 82, 26, 0.12);
+    --color-orange-border:rgba(232, 82, 26, 0.35);
+
+    /* Semantic colors */
+    --color-green:        #22c55e;
+    --color-green-dim:    rgba(34, 197, 94, 0.10);
+    --color-green-border: rgba(34, 197, 94, 0.30);
+
+    --color-red:          #ef4444;
+    --color-red-dim:      rgba(239, 68, 68, 0.10);
+    --color-red-border:   rgba(239, 68, 68, 0.30);
+
+    --color-blue:         #6b8ef5;
+    --color-blue-dim:     rgba(107, 142, 245, 0.10);
+    --color-blue-border:  rgba(107, 142, 245, 0.30);
+
+    --color-yellow:       #f59e0b;
+    --color-yellow-dim:   rgba(245, 158, 11, 0.10);
+    --color-yellow-border:rgba(245, 158, 11, 0.30);
+
+    /* Text */
+    --color-text-primary:   #ffffff;
+    --color-text-secondary: #aaaaaa;
+    --color-text-muted:     #555555;
+
+    /* Legacy aliases (used in existing components) */
+    --color-accent-green:   var(--color-orange);
+    --color-accent-blue:    var(--color-blue);
+    --color-accent-red:     var(--color-red);
+  }
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+
+  /* Syne for large display numbers */
+  .font-display {
+    font-family: var(--font-syne, var(--font-inter)), sans-serif;
+  }
+
+  /* DM Mono for labels/metadata */
+  .font-mono-brand {
+    font-family: var(--font-dm-mono, 'DM Mono', monospace);
+  }
+
+  /* Lora for quoted text */
+  .font-serif-brand {
+    font-family: var(--font-lora, 'Lora', Georgia, serif);
+  }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: #0f0f0f; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+  ::placeholder { color: #444; }
+  select option { background: #1a1a1a; color: #ccc; }
+}
