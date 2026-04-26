@@ -117,17 +117,24 @@ function NewFeedbackForm({
 
   const handleAnalyze = async () => {
     if (!text.trim()) return;
-    setAnalyzing(true); setError(null);
+    setAnalyzing(true);
+    setError(null);
     try {
       const res = await fetch("/api/analyze", {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      if (!res.ok) throw new Error("API error");
-      const analysis = await res.json();
-      await onSave({ text: text.trim(), source, ...analysis });
-    } catch {
-      setError("No se pudo analizar con IA. Usá el modo manual.");
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || "Error desconocido en el análisis");
+      }
+
+      await onSave({ text: text.trim(), source, ...data });
+    } catch (err: any) {
+      setError(err.message || "No se pudo analizar con IA. Usá el modo manual.");
       setManualMode(true);
     }
     setAnalyzing(false);

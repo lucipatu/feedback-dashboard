@@ -33,21 +33,21 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 2. Verificar API key ────────────────────────────────────────────────────
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  const isPlaceholder = !apiKey || apiKey === "tu-api-key-de-anthropic-acá" || apiKey.includes("your-api-key");
 
-  // Log de diagnóstico: nunca imprime la key real, solo su estado
-  console.log(TAG, "ANTHROPIC_API_KEY present:", !!apiKey);
-  console.log(TAG, "ANTHROPIC_API_KEY length:", apiKey?.length ?? 0);
-  console.log(TAG, "ANTHROPIC_API_KEY prefix:", apiKey?.slice(0, 10) ?? "undefined");
+  // Log de diagnóstico
+  console.log(TAG, "ANTHROPIC_API_KEY state:", isPlaceholder ? "PLACEHOLDER/MISSING" : "CONFIGURED");
 
-  if (!apiKey) {
-    console.error(TAG, "ANTHROPIC_API_KEY no está configurada");
+  if (isPlaceholder) {
+    console.error(TAG, "ANTHROPIC_API_KEY no está configurada correctamente");
     return NextResponse.json(
       {
-        error: "ANTHROPIC_API_KEY no está configurada en el servidor",
-        debug: { keyPresent: false },
+        error: "Configuración incompleta",
+        detail: "La API Key de Anthropic no está configurada en .env.local o es el valor por defecto.",
+        code: "MISSING_API_KEY",
       },
-      { status: 500 }
+      { status: 401 }
     );
   }
 
@@ -57,24 +57,48 @@ export async function POST(req: NextRequest) {
   // ── 4. Llamar a Claude ──────────────────────────────────────────────────────
   let raw: string;
   try {
-    console.log(TAG, "Calling Claude model: claude-3-5-sonnet-20241022");
+    console.log(TAG, "Calling Claude model: claude-sonnet-4-6");
 
     const message = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: "claude-sonnet-4-6",
       max_tokens: 1000,
       messages: [
         {
           role: "user",
-          content: `Analizá el siguiente feedback de usuario para una app fintech latinoamericana llamada CapyFi. Respondé ÚNICAMENTE con un JSON válido, sin backticks ni texto adicional, con este formato exacto:
-{"sentiment":"positivo"|"negativo"|"neutral","category":"UX / Diseño"|"Bug / problema técnico"|"Onboarding"|"Depósitos / Retiros"|"Inversiones"|"Monedas / Stablecoins"|"Confianza / Seguridad"|"Features"|"Educación"|"Sin clasificar","insight":"Una oración corta en español con el insight clave del feedback","score":número entero entre -100 y 100}
+          content: `Sos un asistente que analiza feedback de usuarios de CapyFi, una app fintech latinoamericana.
+
+Analizá el siguiente feedback y respondé SOLO con un objeto JSON válido, sin texto adicional, sin backticks, sin explicaciones.
+
+Formato de respuesta requerido:
+{
+  "sentiment": "<uno de: positivo, negativo, neutral>",
+  "category": "<una de las categorías listadas abajo>",
+  "insight": "<una oración en español con el insight clave, máximo 120 caracteres>",
+  "score": <entero entre -100 y 100, donde -100 es muy negativo y 100 es muy positivo>
+}
+
+Categorías válidas (usá exactamente este texto, sin cambios):
+- UX / Diseño
+- Bug / problema técnico
+- Onboarding
+- Depósitos / Retiros
+- Inversiones
+- Monedas / Stablecoins
+- Confianza / Seguridad
+- Features
+- Educación
+- Sin clasificar
 
 Reglas:
-- Usá SOLO las categorías listadas arriba, exactamente como están escritas.
-- Si el feedback no encaja claramente en ninguna, usá "Sin clasificar".
-- No inventes categorías nuevas.
-- El score debe ser un entero: -100 (muy negativo) a +100 (muy positivo).
+- sentiment debe ser exactamente "positivo", "negativo" o "neutral"
+- Si el feedback no encaja en ninguna categoría, usá "Sin clasificar"
+- No uses categorías que no estén en la lista
+- score debe ser coherente con el sentiment (negativo → score negativo, positivo → score positivo)
 
-Feedback: "${text.replace(/"/g, "'")}"`,
+Ejemplo de respuesta correcta:
+{"sentiment":"negativo","category":"Bug / problema técnico","insight":"La app se cierra al intentar pagar con QR.","score":-80}
+
+Feedback a analizar: "${text.replace(/"/g, "'")}"`,
         },
       ],
     });
