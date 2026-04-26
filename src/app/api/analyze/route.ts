@@ -57,10 +57,10 @@ export async function POST(req: NextRequest) {
   // ── 4. Llamar a Claude ──────────────────────────────────────────────────────
   let raw: string;
   try {
-    console.log(TAG, "Calling Claude model: claude-sonnet-4-20250514");
+    console.log(TAG, "Calling Claude model: claude-3-5-sonnet-20241022");
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-3-5-sonnet-20241022",
       max_tokens: 1000,
       messages: [
         {
