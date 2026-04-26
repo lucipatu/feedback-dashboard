@@ -8,8 +8,16 @@ const anthropic = new Anthropic({
 
 const VALID_SENTIMENTS = ["positivo", "negativo", "neutral"] as const;
 const VALID_CATEGORIES = [
-  "UX / Diseño", "Performance", "Pricing",
-  "Onboarding", "Features", "Bug", "General",
+  "UX / Diseño",
+  "Bug / problema técnico",
+  "Onboarding",
+  "Depósitos / Retiros",
+  "Inversiones",
+  "Monedas / Stablecoins",
+  "Confianza / Seguridad",
+  "Features",
+  "Educación",
+  "Sin clasificar",
 ] as const;
 
 export async function POST(req: NextRequest) {
@@ -43,8 +51,15 @@ export async function POST(req: NextRequest) {
       messages: [
         {
           role: "user",
-          content: `Analizá el siguiente feedback de usuario para una app fintech llamada CapyFi. Respondé ÚNICAMENTE con un JSON válido, sin backticks ni texto adicional, con este formato exacto:
-{"sentiment":"positivo"|"negativo"|"neutral","category":"UX / Diseño"|"Performance"|"Pricing"|"Onboarding"|"Features"|"Bug"|"General","insight":"Una oración corta en español con el insight clave del feedback","score":número entre -100 y 100}
+          content: `Analizá el siguiente feedback de usuario para una app fintech latinoamericana llamada CapyFi. Respondé ÚNICAMENTE con un JSON válido, sin backticks ni texto adicional, con este formato exacto:
+{"sentiment":"positivo"|"negativo"|"neutral","category":"UX / Diseño"|"Bug / problema técnico"|"Onboarding"|"Depósitos / Retiros"|"Inversiones"|"Monedas / Stablecoins"|"Confianza / Seguridad"|"Features"|"Educación"|"Sin clasificar","insight":"Una oración corta en español con el insight clave del feedback","score":número entero entre -100 y 100}
+
+Reglas:
+- Usá SOLO las categorías listadas arriba, exactamente como están escritas.
+- Si el feedback no encaja claramente en ninguna, usá "Sin clasificar".
+- No inventes categorías nuevas.
+- El score debe ser un entero: -100 (muy negativo) a +100 (muy positivo).
+
 Feedback: "${text.replace(/"/g, "'")}"`,
         },
       ],
@@ -81,7 +96,7 @@ Feedback: "${text.replace(/"/g, "'")}"`,
 
   const category = VALID_CATEGORIES.includes(analysis.category as typeof VALID_CATEGORIES[number])
     ? (analysis.category as string)
-    : "General";
+    : "Sin clasificar";
 
   const insight = String(analysis.insight ?? "").slice(0, 300);
 

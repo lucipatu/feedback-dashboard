@@ -2,15 +2,44 @@
 // Basado en la lógica real del componente original
 
 export const SOURCES = ["Twitter", "Discord", "Email / Form", "Otro"] as const;
+
+// ── Categorías oficiales CapyFi ───────────────────────────────────────────────
 export const CATEGORIES = [
   "UX / Diseño",
-  "Performance",
-  "Pricing",
+  "Bug / problema técnico",
   "Onboarding",
+  "Depósitos / Retiros",
+  "Inversiones",
+  "Monedas / Stablecoins",
+  "Confianza / Seguridad",
   "Features",
-  "Bug",
-  "General",
+  "Educación",
+  "Sin clasificar",
 ] as const;
+
+// Color por categoría para gráficos
+export const CATEGORY_COLORS: Record<string, string> = {
+  "UX / Diseño":             "#8b5cf6",
+  "Bug / problema técnico":  "#ef4444",
+  "Onboarding":              "#3b82f6",
+  "Depósitos / Retiros":     "#10b981",
+  "Inversiones":             "#e8521a",
+  "Monedas / Stablecoins":   "#f59e0b",
+  "Confianza / Seguridad":   "#06b6d4",
+  "Features":                "#22c55e",
+  "Educación":               "#a855f7",
+  "Sin clasificar":          "#6b7280",
+};
+
+// Mapeo de categorías legacy → oficiales (para normalizar feedbacks viejos)
+export const CATEGORY_NORMALIZE_MAP: Record<string, string> = {
+  "Bug":          "Bug / problema técnico",
+  "Performance":  "Bug / problema técnico",
+  "Pricing":      "Depósitos / Retiros",
+  "Transferencias": "Depósitos / Retiros",
+  "Pagos QR":     "Bug / problema técnico",
+  "General":      "Sin clasificar",
+};
 
 export type Source = (typeof SOURCES)[number];
 export type Category = (typeof CATEGORIES)[number];
@@ -96,7 +125,7 @@ export const MOCK_FEEDBACK: FeedbackItem[] = [
     source: "Twitter",
     date: "24 abr 2026",
     sentiment: "negativo",
-    category: "Bug",
+    category: "Bug / problema técnico",
     insight: "Bug crítico recurrente en pagos QR que impacta la experiencia de pago.",
     score: -85,
   },
@@ -116,7 +145,7 @@ export const MOCK_FEEDBACK: FeedbackItem[] = [
     source: "Discord",
     date: "23 abr 2026",
     sentiment: "negativo",
-    category: "Pricing",
+    category: "Depósitos / Retiros",
     insight: "Precio de transferencias internacionales percibido como poco competitivo.",
     score: -42,
   },
@@ -126,7 +155,7 @@ export const MOCK_FEEDBACK: FeedbackItem[] = [
     source: "Twitter",
     date: "22 abr 2026",
     sentiment: "neutral",
-    category: "Performance",
+    category: "Bug / problema técnico",
     insight: "Latencia en carga de saldo durante horario pico matutino.",
     score: -18,
   },
@@ -166,7 +195,7 @@ export const MOCK_FEEDBACK: FeedbackItem[] = [
     source: "Email / Form",
     date: "20 abr 2026",
     sentiment: "negativo",
-    category: "General",
+    category: "Confianza / Seguridad",
     insight: "Bloqueo de cuenta sin notificación genera situación crítica para el usuario.",
     score: -96,
   },
@@ -176,7 +205,7 @@ export const MOCK_FEEDBACK: FeedbackItem[] = [
     source: "Discord",
     date: "20 abr 2026",
     sentiment: "positivo",
-    category: "Pricing",
+    category: "Inversiones",
     insight: "Tasa de ahorro percibida como diferencial que impulsa migración desde bancos.",
     score: 90,
   },
@@ -233,7 +262,8 @@ export function mapSupabaseRow(row: {
       year: "numeric",
     }),
     sentiment: row.sentiment as Sentiment,
-    category: row.category as Category,
+    // Normalizar categorías legacy a las oficiales
+    category: (CATEGORY_NORMALIZE_MAP[row.category] ?? row.category) as Category,
     insight: row.insight,
     score: row.score,
   };

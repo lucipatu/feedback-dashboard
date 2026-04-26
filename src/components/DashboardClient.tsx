@@ -429,7 +429,7 @@ export function DashboardClient() {
       </section>
 
       {/* ── Category Breakdown ── */}
-      <div className="mb-6"><CategoryBreakdown /></div>
+      <div className="mb-6"><CategoryBreakdown items={items} /></div>
 
       {/* ── Filters ── */}
       <div className="flex items-center gap-2 flex-wrap mb-4">
