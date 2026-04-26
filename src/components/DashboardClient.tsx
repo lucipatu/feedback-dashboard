@@ -99,7 +99,7 @@ function NewFeedbackForm({
   const [error, setError] = useState<string | null>(null);
   const [manualMode, setManualMode] = useState(false);
   const [manualSentiment, setManualSentiment] = useState<Sentiment>("positivo");
-  const [manualCategory, setManualCategory] = useState<Category>("General");
+  const [manualCategory, setManualCategory] = useState<Category>("Sin clasificar");
   const [manualInsight, setManualInsight] = useState("");
   const [manualScore, setManualScore] = useState(0);
 
