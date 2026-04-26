@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
-// El cliente se inicializa con la key del servidor — nunca llega al browser
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
 const VALID_SENTIMENTS = ["positivo", "negativo", "neutral"] as const;
 const VALID_CATEGORIES = [
   "UX / Diseño",
@@ -21,12 +16,15 @@ const VALID_CATEGORIES = [
 ] as const;
 
 export async function POST(req: NextRequest) {
-  // 1. Validar input
+  const TAG = "[/api/analyze]";
+
+  // ── 1. Validar input ────────────────────────────────────────────────────────
   let text: string;
   try {
     const body = await req.json();
     text = String(body?.text ?? "").trim();
-  } catch {
+  } catch (e) {
+    console.error(TAG, "Body JSON inválido:", e);
     return NextResponse.json({ error: "Body JSON inválido" }, { status: 400 });
   }
 
@@ -34,17 +32,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "El campo 'text' es requerido" }, { status: 400 });
   }
 
-  // 2. Verificar que la API key esté configurada
-  if (!process.env.ANTHROPIC_API_KEY) {
+  // ── 2. Verificar API key ────────────────────────────────────────────────────
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+
+  // Log de diagnóstico: nunca imprime la key real, solo su estado
+  console.log(TAG, "ANTHROPIC_API_KEY present:", !!apiKey);
+  console.log(TAG, "ANTHROPIC_API_KEY length:", apiKey?.length ?? 0);
+  console.log(TAG, "ANTHROPIC_API_KEY prefix:", apiKey?.slice(0, 10) ?? "undefined");
+
+  if (!apiKey) {
+    console.error(TAG, "ANTHROPIC_API_KEY no está configurada");
     return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY no está configurada en el servidor" },
+      {
+        error: "ANTHROPIC_API_KEY no está configurada en el servidor",
+        debug: { keyPresent: false },
+      },
       { status: 500 }
     );
   }
 
-  // 3. Llamar a Claude con el mismo prompt del componente original
+  // ── 3. Crear cliente dentro del handler (evita problemas de inicialización en Vercel) ──
+  const anthropic = new Anthropic({ apiKey });
+
+  // ── 4. Llamar a Claude ──────────────────────────────────────────────────────
   let raw: string;
   try {
+    console.log(TAG, "Calling Claude model: claude-sonnet-4-20250514");
+
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1000,
@@ -66,30 +80,51 @@ Feedback: "${text.replace(/"/g, "'")}"`,
     });
 
     raw = message.content.find((b) => b.type === "text")?.text ?? "{}";
+    console.log(TAG, "Claude raw response:", raw.slice(0, 200));
+
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Error desconocido";
-    console.error("[/api/analyze] Error llamando a Anthropic:", msg);
+    // Extraer todos los detalles del error de Anthropic
+    const isAnthropicError = err instanceof Anthropic.APIError;
+    const status = isAnthropicError ? err.status : undefined;
+    const errName = isAnthropicError ? err.name : undefined;
+    const msg = err instanceof Error ? err.message : String(err);
+
+    console.error(TAG, "Anthropic API error:", {
+      message: msg,
+      status,
+      name: errName,
+      type: isAnthropicError ? err.error : undefined,
+    });
+
     return NextResponse.json(
-      { error: `Error al llamar a Claude: ${msg}` },
+      {
+        error: "Error al llamar a Claude",
+        detail: msg,
+        anthropicStatus: status,
+        anthropicName: errName,
+      },
       { status: 502 }
     );
   }
 
-  // 4. Parsear y sanear la respuesta
+  // ── 5. Parsear respuesta ────────────────────────────────────────────────────
   let analysis: Record<string, unknown>;
   try {
-    // Limpia posibles backticks que Claude incluya a pesar del prompt
     const cleaned = raw.replace(/```json|```/g, "").trim();
     analysis = JSON.parse(cleaned);
-  } catch {
-    console.error("[/api/analyze] Respuesta no parseable:", raw);
+    console.log(TAG, "Parsed analysis:", JSON.stringify(analysis));
+  } catch (e) {
+    console.error(TAG, "JSON parse error. Raw:", raw, "Error:", e);
     return NextResponse.json(
-      { error: "Claude devolvió una respuesta que no es JSON válido" },
+      {
+        error: "Claude devolvió una respuesta que no es JSON válido",
+        rawResponse: raw.slice(0, 500),
+      },
       { status: 502 }
     );
   }
 
-  // 5. Validar valores antes de enviar al cliente
+  // ── 6. Validar y sanear valores ─────────────────────────────────────────────
   const sentiment = VALID_SENTIMENTS.includes(analysis.sentiment as typeof VALID_SENTIMENTS[number])
     ? (analysis.sentiment as string)
     : "neutral";
@@ -99,8 +134,9 @@ Feedback: "${text.replace(/"/g, "'")}"`,
     : "Sin clasificar";
 
   const insight = String(analysis.insight ?? "").slice(0, 300);
-
   const score = Math.max(-100, Math.min(100, Math.round(Number(analysis.score) || 0)));
+
+  console.log(TAG, "Final result:", { sentiment, category, score });
 
   return NextResponse.json({ sentiment, category, insight, score });
 }
