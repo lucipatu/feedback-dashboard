@@ -38,3 +38,7 @@ yarn-error.log*
 .idea/
 *.swp
 *.swo
+
+# ── Security artifacts (RRA, threat models) — quedan locales ─────────────────
+RRA_*.csv
+RRA_*.md

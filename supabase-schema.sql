@@ -1,12 +1,17 @@
 -- ============================================================
 -- CapyFi Feedback Dashboard — Schema de Supabase
 -- Ejecutar en: Supabase Dashboard > SQL Editor > New query
+--
+-- v2 (security hardening): RLS reescritas — acceso solo para usuarios
+-- autenticados, DELETE limitado al creador, UPDATE bloqueado.
+-- Reemplaza el modelo abierto anterior (RRA: P0 #1, #2, #3, #6).
 -- ============================================================
 
--- 1. Crear la tabla
+-- 1. Crear la tabla (fresh install)
 create table if not exists feedbacks (
   id          uuid primary key default gen_random_uuid(),
   created_at  timestamptz not null default now(),
+  created_by  uuid references auth.users(id) on delete set null default auth.uid(),
   text        text not null,
   source      text not null,
   sentiment   text not null check (sentiment in ('positivo', 'negativo', 'neutral')),
@@ -15,18 +20,48 @@ create table if not exists feedbacks (
   score       integer not null default 0 check (score >= -100 and score <= 100)
 );
 
+-- 1b. Migration-safe: agregar created_by si la tabla ya existía sin esa columna
+alter table feedbacks
+  add column if not exists created_by uuid references auth.users(id) on delete set null;
+
+alter table feedbacks
+  alter column created_by set default auth.uid();
+
 -- 2. Habilitar Row Level Security
 alter table feedbacks enable row level security;
 
--- 3. Políticas — acceso público (anon key) para leer, insertar y eliminar
-create policy "Allow public select"
-  on feedbacks for select using (true);
+-- 3. Eliminar políticas antiguas y permisivas (migration-safe)
+drop policy if exists "Allow public select" on feedbacks;
+drop policy if exists "Allow public insert" on feedbacks;
+drop policy if exists "Allow public delete" on feedbacks;
 
-create policy "Allow public insert"
-  on feedbacks for insert with check (true);
+-- 4. Políticas nuevas — todas requieren sesión autenticada de Supabase Auth
+--
+-- SELECT: cualquier miembro del equipo autenticado puede leer todos los feedbacks
+--         (es un dashboard interno compartido).
+create policy "feedbacks_select_authenticated"
+  on feedbacks for select
+  to authenticated
+  using (true);
 
-create policy "Allow public delete"
-  on feedbacks for delete using (true);
+-- INSERT: solo usuarios autenticados. La columna created_by se completa con
+--         auth.uid() por DEFAULT, y la policy verifica que coincida con el
+--         JWT que está insertando (evita spoofing de autoría).
+create policy "feedbacks_insert_authenticated"
+  on feedbacks for insert
+  to authenticated
+  with check (created_by = auth.uid());
+
+-- DELETE: solo el creador del feedback puede borrarlo.
+--         Los rows con created_by = NULL (seed/legacy) no son borrables desde
+--         el cliente; usar service_role en el SQL Editor si hace falta limpiar.
+create policy "feedbacks_delete_owner"
+  on feedbacks for delete
+  to authenticated
+  using (created_by = auth.uid());
+
+-- (Intencional: NO existe política UPDATE → todo UPDATE queda denegado bajo
+--  RLS. Los feedbacks son inmutables; preserva integridad del histórico.)
 
 -- ============================================================
 -- Seed data — 12 feedbacks de ejemplo
